@@ -5,9 +5,9 @@ numpy==1.18.5
 phonemizer==2.2.1
 scipy==1.5.2
 tensorboard==2.3.0
-torch==1.13.1
-torchvision==0.14.1
-torchaudio==0.13.1
+torch==1.12.0
+torchvision==0.13.0
+torchaudio==0.12.0
 Unidecode==1.1.1
 
 protobuf==3.20.3
