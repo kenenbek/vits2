@@ -41,16 +41,18 @@ global_step = 0
 
 
 def main():
-  """Assume Single Node Multi GPUs Training Only"""
   assert torch.cuda.is_available(), "CPU training is not allowed."
 
   n_gpus = torch.cuda.device_count()
   os.environ['MASTER_ADDR'] = 'localhost'
   os.environ['MASTER_PORT'] = '65520'
-#   n_gpus = 1
 
   hps = utils.get_hparams()
-  mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
+  if n_gpus <= 1:
+    # single-GPU: run directly in the same process
+    run(0, n_gpus, hps)
+  else:
+    mp.spawn(run, nprocs=n_gpus, args=(n_gpus, hps,))
 
 
 def run(rank, n_gpus, hps):
@@ -62,21 +64,22 @@ def run(rank, n_gpus, hps):
     writer = SummaryWriter(log_dir=hps.model_dir)
     writer_eval = SummaryWriter(log_dir=os.path.join(hps.model_dir, "eval"))
 
-  dist.init_process_group(backend='nccl', init_method='env://', world_size=n_gpus, rank=rank)
+  if n_gpus >= 1:
+    dist.init_process_group(backend='nccl', init_method='env://', world_size=n_gpus, rank=rank)
   torch.manual_seed(hps.train.seed)
   torch.cuda.set_device(rank)
 
   train_dataset = TextAudioLoader(hps.data.training_files, hps.data)
-  train_sampler = DistributedBucketSampler(
-      train_dataset,
-      hps.train.batch_size,
-      [32,300,400,500,600,700,800,900,1000],
-      num_replicas=n_gpus,
-      rank=rank,
-      shuffle=True)
+  # train_sampler = DistributedBucketSampler(
+  #     train_dataset,
+  #     hps.train.batch_size,
+  #     [32,300,400,500,600,700,800,900,1000],
+  #     num_replicas=n_gpus,
+  #     rank=rank,
+  #     shuffle=True)
   collate_fn = TextAudioCollate()
-  train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False, pin_memory=True,
-      collate_fn=collate_fn, batch_sampler=train_sampler)
+  train_loader = DataLoader(train_dataset, num_workers=8, shuffle=True, pin_memory=True,
+      collate_fn=collate_fn) #shuffle=True
   if rank == 0:
     eval_dataset = TextAudioLoader(hps.data.validation_files, hps.data)
     eval_loader = DataLoader(eval_dataset, num_workers=1, shuffle=False,
@@ -133,7 +136,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
   if writers is not None:
     writer, writer_eval = writers
 
-  train_loader.batch_sampler.set_epoch(epoch)
+  #train_loader.batch_sampler.set_epoch(epoch)
   global global_step
 
   net_g.train()
