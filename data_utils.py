@@ -204,7 +204,6 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
 
     def get_audio_text_speaker_tone_pair(self, audiopath_sid_text):
         # separate filename, speaker_id and text
-        print(audiopath_sid_text)
         audiopath, sid, tone, real_text, pronounced_text = audiopath_sid_text
         text = self.get_text(pronounced_text)
         spec, wav = self.get_audio(audiopath)
@@ -282,6 +281,7 @@ class TextAudioSpeakerCollate():
         spec_lengths = torch.LongTensor(len(batch))
         wav_lengths = torch.LongTensor(len(batch))
         sid = torch.LongTensor(len(batch))
+        toneid = torch.LongTensor(len(batch))
 
         text_padded = torch.LongTensor(len(batch), max_text_len)
         spec_padded = torch.FloatTensor(len(batch), batch[0][1].size(0), max_spec_len)
@@ -305,10 +305,11 @@ class TextAudioSpeakerCollate():
             wav_lengths[i] = wav.size(1)
 
             sid[i] = row[3]
+            toneid[i] = row[4]
 
         if self.return_ids:
-            return text_padded, text_lengths, spec_padded, spec_lengths, wav_padded, wav_lengths, sid, ids_sorted_decreasing
-        return text_padded, text_lengths, spec_padded, spec_lengths, wav_padded, wav_lengths, sid
+            return text_padded, text_lengths, spec_padded, spec_lengths, wav_padded, wav_lengths, sid, toneid, ids_sorted_decreasing
+        return text_padded, text_lengths, spec_padded, spec_lengths, wav_padded, wav_lengths, sid, toneid
 
 
 class DistributedBucketSampler(torch.utils.data.distributed.DistributedSampler):
