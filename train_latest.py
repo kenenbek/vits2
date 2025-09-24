@@ -37,6 +37,7 @@ torch.autograd.set_detect_anomaly(True)
 torch.backends.cudnn.benchmark = True
 global_step = 0
 
+device = "cuda"
 
 def main():
   assert torch.cuda.is_available(), "CPU training is not allowed."
@@ -100,8 +101,8 @@ def run(rank, n_gpus, hps):
       hps.train.learning_rate, 
       betas=hps.train.betas, 
       eps=hps.train.eps)
-  net_g = DDP(net_g, device_ids=[rank])
-  net_d = DDP(net_d, device_ids=[rank])
+  net_g = net_g.to(device)
+  net_d = net_d.to(device)
 
   try:
     _, _, _, epoch_str = utils.load_checkpoint(utils.latest_checkpoint_path(hps.model_dir, "G_*.pth"), net_g, optim_g)
