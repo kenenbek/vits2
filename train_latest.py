@@ -18,8 +18,7 @@ import commons
 import utils
 from data_utils import (
   TextAudioLoader,
-  TextAudioCollate,
-  DistributedBucketSampler
+  TextAudioCollate
 )
 from models import (
   SynthesizerTrn,
