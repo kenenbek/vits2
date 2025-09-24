@@ -651,18 +651,34 @@ class SynthesizerTrn(nn.Module):
     else:
       self.dp = DurationPredictor(hidden_channels, 256, 3, 0.5, gin_channels=gin_channels)
 
-    if n_speakers > 1:
-      self.emb_speaker = nn.Embedding(n_speakers, gin_channels)
-    if n_tones > 1:
-      self.emb_tone = nn.Embedding(n_tones, gin_channels)
+    # Optional conditioning embeddings. Each produces a vector in R^{gin_channels}.
+    self.emb_speaker = nn.Embedding(n_speakers, gin_channels) if (n_speakers is not None and n_speakers > 1 and gin_channels > 0) else None
+    self.emb_tone = nn.Embedding(n_tones, gin_channels) if (n_tones is not None and n_tones > 1 and gin_channels > 0) else None
 
-  def forward(self, x, x_lengths, y, y_lengths, sid=None):
+  def _build_g(self, sid=None, tid=None):
+    """
+    Build conditioning vector g with shape [B, gin_channels, 1] or return None.
+    If both speaker and tone embeddings exist, sum them (simple additive conditioning).
+    """
+    if self.gin_channels == 0:
+      return None
+    g_components = []
+    if (self.emb_speaker is not None) and (sid is not None):
+      g_components.append(self.emb_speaker(sid))  # [B, gin]
+    if (self.emb_tone is not None) and (tid is not None):
+      g_components.append(self.emb_tone(tid))  # [B, gin]
+    if len(g_components) == 0:
+      return None
+    # Sum components; alternative strategies (concat) would need wider gin_channels.
+    g = g_components[0]
+    for t in g_components[1:]:
+      g = g + t
+    return g.unsqueeze(-1)  # [B, gin, 1]
+
+  def forward(self, x, x_lengths, y, y_lengths, sid=None, tid=None):
 
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-    if self.n_speakers > 0:
-      g = self.emb_g(sid).unsqueeze(-1) # [b, h, 1]
-    else:
-      g = None
+    g = self._build_g(sid=sid, tid=tid)
 
     z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g)
     z_p = self.flow(z, y_mask, g=g)
@@ -696,12 +712,9 @@ class SynthesizerTrn(nn.Module):
     o, o_mb = self.dec(z_slice, g=g)
     return o, o_mb, l_length, attn, ids_slice, x_mask, y_mask, (z, z_p, m_p, logs_p, m_q, logs_q)
 
-  def infer(self, x, x_lengths, sid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
+  def infer(self, x, x_lengths, sid=None, tid=None, noise_scale=1, length_scale=1, noise_scale_w=1., max_len=None):
     x, m_p, logs_p, x_mask = self.enc_p(x, x_lengths)
-    if self.n_speakers > 0:
-      g = self.emb_g(sid).unsqueeze(-1) # [b, h, 1]
-    else:
-      g = None
+    g = self._build_g(sid=sid, tid=tid)
 
     if self.use_sdp:
       logw = self.dp(x, x_mask, g=g, reverse=True, noise_scale=noise_scale_w)
@@ -722,13 +735,15 @@ class SynthesizerTrn(nn.Module):
     o, o_mb = self.dec((z * y_mask)[:,:,:max_len], g=g)
     return o, o_mb, attn, y_mask, (z, z_p, m_p, logs_p)
 
-  def voice_conversion(self, y, y_lengths, sid_src, sid_tgt):
-    assert self.n_speakers > 0, "n_speakers have to be larger than 0."
-    g_src = self.emb_g(sid_src).unsqueeze(-1)
-    g_tgt = self.emb_g(sid_tgt).unsqueeze(-1)
+  def voice_conversion(self, y, y_lengths, sid_src=None, sid_tgt=None, tid_src=None, tid_tgt=None):
+    """
+    Voice/tone conversion. Any of sid/tid can be None if unused. Requires corresponding embeddings to exist.
+    """
+    assert (self.emb_speaker is not None) or (self.emb_tone is not None), "Conditioning embeddings are not initialized (n_speakers and n_tones are 1)."
+    g_src = self._build_g(sid=sid_src, tid=tid_src)
+    g_tgt = self._build_g(sid=sid_tgt, tid=tid_tgt)
     z, m_q, logs_q, y_mask = self.enc_q(y, y_lengths, g=g_src)
     z_p = self.flow(z, y_mask, g=g_src)
     z_hat = self.flow(z_p, y_mask, g=g_tgt, reverse=True)
     o_hat, o_hat_mb = self.dec(z_hat * y_mask, g=g_tgt)
     return o_hat, o_hat_mb, y_mask, (z, z_p, z_hat)
-
