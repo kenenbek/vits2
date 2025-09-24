@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torch.multiprocessing as mp
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.cuda.amp import autocast, GradScaler
 from pqmf import PQMF
 
@@ -77,7 +76,7 @@ def run(rank, n_gpus, hps):
   #     rank=rank,
   #     shuffle=True)
   collate_fn = TextAudioSpeakerCollate()
-  train_loader = DataLoader(train_dataset, num_workers=8, shuffle=True, pin_memory=True,
+  train_loader = DataLoader(train_dataset, num_workers=4, shuffle=True, pin_memory=True,
       collate_fn=collate_fn) #shuffle=True
   if rank == 0:
     eval_dataset = TextAudioSpeakerToneLoader(hps.data.validation_files, hps.data)
@@ -308,7 +307,4 @@ def evaluate(hps, generator, eval_loader, writer_eval):
 
                            
 if __name__ == "__main__":
-  os.environ[
-        "TORCH_DISTRIBUTED_DEBUG"
-    ] = "DETAIL"
   main()
