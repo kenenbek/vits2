@@ -200,6 +200,7 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
 
     def get_audio_text_speaker_tone_pair(self, audiopath_sid_text):
         # separate filename, speaker_id and text
+        print(audiopath_sid_text)
         audiopath, sid, tone, real_text, pronounced_text = audiopath_sid_text
         text = self.get_text(pronounced_text)
         spec, wav = self.get_audio(audiopath)
