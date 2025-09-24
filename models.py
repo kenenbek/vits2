@@ -651,9 +651,10 @@ class SynthesizerTrn(nn.Module):
     else:
       self.dp = DurationPredictor(hidden_channels, 256, 3, 0.5, gin_channels=gin_channels)
 
-    print(n_speakers, n_tones, gin_channels)
-    if n_speakers > 2:
-      self.emb_g = nn.Embedding(n_speakers, gin_channels)
+    if n_speakers > 1:
+      self.emb_speaker = nn.Embedding(n_speakers, gin_channels)
+    if n_tones > 1:
+      self.emb_tone = nn.Embedding(n_tones, gin_channels)
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None):
 
