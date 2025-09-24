@@ -587,7 +587,8 @@ class SynthesizerTrn(nn.Module):
     upsample_kernel_sizes,
     gen_istft_n_fft,
     gen_istft_hop_size,
-    n_speakers=0,
+    n_speakers=1,
+    n_tones=1,
     gin_channels=0,
     use_sdp=False,
     ms_istft_vits=False,
@@ -614,6 +615,7 @@ class SynthesizerTrn(nn.Module):
     self.upsample_kernel_sizes = upsample_kernel_sizes
     self.segment_size = segment_size
     self.n_speakers = n_speakers
+    self.n_tones = n_tones
     self.gin_channels = gin_channels
     self.ms_istft_vits = ms_istft_vits
     self.mb_istft_vits = mb_istft_vits
@@ -649,7 +651,8 @@ class SynthesizerTrn(nn.Module):
     else:
       self.dp = DurationPredictor(hidden_channels, 256, 3, 0.5, gin_channels=gin_channels)
 
-    if n_speakers > 1:
+    print(n_speakers, n_tones, gin_channels)
+    if n_speakers > 2:
       self.emb_g = nn.Embedding(n_speakers, gin_channels)
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None):
