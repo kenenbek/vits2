@@ -248,7 +248,7 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
         return self.get_audio_text_speaker_tone_pair(self.audiopaths_sid_text_tone[index])
 
     def __len__(self):
-        return len(self.audiopaths_sid_text_tone)
+        return len(self.audiopaths_sid_tone_text)
 
 
 class TextAudioSpeakerCollate():
