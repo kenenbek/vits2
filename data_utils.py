@@ -175,6 +175,10 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
         random.shuffle(self.audiopaths_sid_tone_text)
         self._filter()
 
+        self.speaker_dict = {
+            "Timur": 0,
+            "Aiganysh": 1,
+        }
         self.tone_dict = {
             "neutral": 0,
             "strict": 1,
@@ -237,6 +241,7 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
         return text_norm
 
     def get_sid(self, sid):
+        sid = self.speaker_dict[sid]
         sid = torch.LongTensor([int(sid)])
         return sid
 
