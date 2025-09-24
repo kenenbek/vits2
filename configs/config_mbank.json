@@ -43,7 +43,7 @@
     "istft_vits": false,
     "n_speakers": 2,
     "n_tones": 2,
-    "gin_channels": 64,
+    "gin_channels": 128,
     "subbands": 4,
     "gen_istft_n_fft": 16,
     "gen_istft_hop_size": 4,

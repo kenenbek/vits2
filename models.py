@@ -654,26 +654,52 @@ class SynthesizerTrn(nn.Module):
     # Optional conditioning embeddings. Each produces a vector in R^{gin_channels}.
     self.emb_speaker = nn.Embedding(n_speakers, gin_channels) if (n_speakers is not None and n_speakers > 1 and gin_channels > 0) else None
     self.emb_tone = nn.Embedding(n_tones, gin_channels) if (n_tones is not None and n_tones > 1 and gin_channels > 0) else None
+    # If both embeddings exist, we'll concatenate and project back to gin_channels.
+    if (self.emb_speaker is not None) and (self.emb_tone is not None):
+      self.g_proj = nn.Conv1d(2 * gin_channels, gin_channels, 1)
+    else:
+      self.g_proj = None
 
   def _build_g(self, sid=None, tid=None):
     """
-    Build conditioning vector g with shape [B, gin_channels, 1] or return None.
-    If both speaker and tone embeddings exist, sum them (simple additive conditioning).
+    Build conditioning vector g with shape [B, gin_channels, 1] using concatenation of
+    speaker and tone embeddings (if both exist). When both embeddings exist, they are
+    concatenated along channel dim and projected back to gin_channels.
+    If neither id is provided, returns None.
     """
     if self.gin_channels == 0:
       return None
-    g_components = []
+
+    # Case 1: both embeddings exist -> concatenate (with zero fill if an id is missing)
+    if (self.emb_speaker is not None) and (self.emb_tone is not None):
+      if (sid is None) and (tid is None):
+        return None
+      # Determine batch size and device from whichever id is provided
+      if sid is not None:
+        B = sid.shape[0]
+        dev = sid.device
+      else:
+        B = tid.shape[0]
+        dev = tid.device
+      dtype = self.emb_speaker.weight.dtype
+      spk = self.emb_speaker(sid) if sid is not None else torch.zeros(B, self.gin_channels, device=dev, dtype=dtype)
+      tone = self.emb_tone(tid) if tid is not None else torch.zeros(B, self.gin_channels, device=dev, dtype=dtype)
+      g_cat = torch.cat([spk, tone], dim=1).unsqueeze(-1)  # [B, 2*gin, 1]
+      if self.g_proj is not None:
+        g = self.g_proj(g_cat)  # [B, gin, 1]
+      else:
+        # Fallback (should not happen in this branch)
+        g = g_cat[:, :self.gin_channels, :]
+      return g
+
+    # Case 2: only one embedding exists -> return that embedding if id provided
     if (self.emb_speaker is not None) and (sid is not None):
-      g_components.append(self.emb_speaker(sid))  # [B, gin]
+      return self.emb_speaker(sid).unsqueeze(-1)
     if (self.emb_tone is not None) and (tid is not None):
-      g_components.append(self.emb_tone(tid))  # [B, gin]
-    if len(g_components) == 0:
-      return None
-    # Sum components; alternative strategies (concat) would need wider gin_channels.
-    g = g_components[0]
-    for t in g_components[1:]:
-      g = g + t
-    return g.unsqueeze(-1)  # [B, gin, 1]
+      return self.emb_tone(tid).unsqueeze(-1)
+
+    # No conditioning available
+    return None
 
   def forward(self, x, x_lengths, y, y_lengths, sid=None, tid=None):
 
