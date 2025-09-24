@@ -75,6 +75,30 @@ def latest_checkpoint_path(dir_path, regex="G_*.pth"):
   return x
 
 
+def prune_checkpoints(dir_path, regex, n_keep):
+  """
+  Keep only the latest n_keep checkpoints matching regex inside dir_path.
+  Oldest ones (by numeric suffix) are deleted.
+  """
+  try:
+    if n_keep is None or n_keep <= 0:
+      return
+  except Exception:
+    return
+  pattern = os.path.join(dir_path, regex)
+  files = glob.glob(pattern)
+  if len(files) <= n_keep:
+    return
+  files.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
+  to_remove = files[:-n_keep]
+  for f in to_remove:
+    try:
+      os.remove(f)
+      logger.info(f"Removed old checkpoint: {f}")
+    except Exception as e:
+      logger.warning(f"Failed to remove {f}: {e}")
+
+
 def plot_spectrogram_to_numpy(spectrogram):
   global MATPLOTLIB_FLAG
   if not MATPLOTLIB_FLAG:

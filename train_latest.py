@@ -244,6 +244,10 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
         evaluate(hps, net_g, eval_loader, writer_eval)
         utils.save_checkpoint(net_g, optim_g, hps.train.learning_rate, epoch, os.path.join(hps.model_dir, "G_{}.pth".format(global_step)))
         utils.save_checkpoint(net_d, optim_d, hps.train.learning_rate, epoch, os.path.join(hps.model_dir, "D_{}.pth".format(global_step)))
+        # Optionally prune older checkpoints if configured
+        keep_last_n = getattr(hps.train, "keep_last_n", None)
+        utils.prune_checkpoints(hps.model_dir, "G_*.pth", keep_last_n)
+        utils.prune_checkpoints(hps.model_dir, "D_*.pth", keep_last_n)
     global_step += 1
 
   
