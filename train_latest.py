@@ -252,7 +252,7 @@ def train_and_evaluate(rank, epoch, hps, nets, optims, schedulers, scaler, loade
 
  
 def evaluate(hps, generator, eval_loader, writer_eval):
-    pass
+    return 
     generator.eval()
     with torch.no_grad():
       for batch_idx, (x, x_lengths, spec, spec_lengths, y, y_lengths, sid, toneid) in enumerate(eval_loader):
