@@ -245,7 +245,7 @@ class TextAudioSpeakerToneLoader(torch.utils.data.Dataset):
         return tone_id
 
     def __getitem__(self, index):
-        return self.get_audio_text_speaker_tone_pair(self.audiopaths_sid_text_tone[index])
+        return self.get_audio_text_speaker_tone_pair(self.audiopaths_sid_tone_text[index])
 
     def __len__(self):
         return len(self.audiopaths_sid_tone_text)
