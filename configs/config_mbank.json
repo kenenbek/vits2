@@ -2,7 +2,7 @@
   "train": {
     "keep_last_n": 5,
     "log_interval": 200,
-    "eval_interval": 1000,
+    "eval_interval": 2500,
     "seed": 1234,
     "epochs": 20000,
     "learning_rate": 2e-4,
@@ -63,6 +63,6 @@
     "upsample_kernel_sizes": [16,16],
     "n_layers_q": 3,
     "use_spectral_norm": false,
-    "use_sdp": false
+    "use_sdp": true
   }
 }
